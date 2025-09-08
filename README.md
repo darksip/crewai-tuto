@@ -20,7 +20,7 @@ uv sync
 
 # Configurer Doppler (une seule fois)
 doppler setup
-doppler secrets set SERP_API_KEY "votre-clé-serper"
+doppler secrets set SERPER_API_KEY "votre-clé-serper"
 doppler secrets set OPENAI_API_KEY "votre-clé-openai"
 ```
 
@@ -60,12 +60,10 @@ Les synthèses sont générées dans le dossier `syntheses/` :
 1. **Researcher** : Recherche d'actualités et vidéos YouTube
 2. **Synthesizer** : Rédaction des synthèses markdown
 
-## 🛠️ API Requises (seulement 2 !)
+## 🛠️ API Requises
 
-- **Serper API** : Recherche Google ET YouTube en une seule API (https://serper.dev)  
-- **OpenAI API** : LLM pour les agents CrewAI (https://platform.openai.com)
-
-**🎉 Plus besoin de YouTube Data API !** Serper gère tout via `site:youtube.com`
+- **Serper API** : Recherche Google (https://serper.dev)
+- **OpenAI API** : LLM pour les agents (https://platform.openai.com)
 
 ## 🔄 Automatisation
 
