@@ -1,0 +1,129 @@
+# Configuration du système de veille CrewAI (Version Simple)
+
+# Topics à surveiller
+topics:
+  - name: "Intelligence Artificielle"
+    keywords: ["IA générative", "LLM", "ChatGPT", "Claude", "Gemini"]
+    youtube_channels:
+      - "Underscore_"
+      - "Machine Learnia"
+      - "Micode"
+    volume: 8
+    
+  - name: "Crypto Finance"
+    keywords: ["Bitcoin", "Ethereum", "DeFi", "blockchain"]
+    youtube_channels:
+      - "Hasheur"
+      - "Captain Altcoin"
+      - "Crypto Matrix"
+    volume: 6
+    
+  - name: "Tech Startups"
+    keywords: ["startup française", "financement", "levée de fonds", "licorne"]
+    youtube_channels:
+      - "The Family"
+      - "Station F"
+      - "French Tech"
+    volume: 5
+
+# Configuration des agents
+agents:
+  researcher:
+    role: "Chercheur Web Senior"
+    goal: "Trouver les actualités et vidéos les plus récentes et pertinentes sur le sujet donné"
+    backstory: >
+      Tu es un expert en recherche d'information avec 10 ans d'expérience. 
+      Tu sais identifier les sources fiables et filtrer l'information pertinente.
+      Tu te concentres sur les contenus récents (dernières 24h) et de qualité.
+  
+  synthesizer:
+    role: "Rédacteur de Synthèses"
+    goal: "Créer des synthèses claires, structurées et actionnables"
+    backstory: >
+      Tu es un journaliste tech expérimenté spécialisé dans la rédaction de synthèses.
+      Tu excelles dans l'analyse et la mise en perspective des informations.
+      Tu créés des contenus clairs, bien structurés et utiles pour les décideurs.
+
+# Configuration des tâches
+tasks:
+  search_news:
+    description: >
+      Recherche les actualités les plus récentes (dernières 24h) sur le topic "{topic_name}".
+      Utilise les mots-clés : {keywords}
+      Trouve {volume} articles pertinents et récents.
+      Concentre-toi sur les sources fiables et l'information de qualité.
+    agent: researcher
+    expected_output: >
+      Une liste d'articles avec :
+      - Titre
+      - Source  
+      - URL
+      - Résumé en 2-3 phrases
+      - Date de publication
+    
+  search_videos:
+    description: >
+      Recherche les vidéos YouTube les plus récentes (dernières 24h) sur le topic "{topic_name}".
+      
+      STRATÉGIE DE RECHERCHE :
+      Pour chaque chaîne autorisée ({youtube_channels}), effectue une recherche Google avec :
+      - site:youtube.com "Nom de la chaîne" {keywords}
+      
+      Exemple de requêtes :
+      - site:youtube.com "Underscore_" {keywords}
+      - site:youtube.com "Machine Learnia" {keywords}
+      
+      Filtre par date : dernières 24h
+      Trouve {volume} vidéos pertinentes au total.
+    agent: researcher
+    expected_output: >
+      Une liste de vidéos YouTube avec :
+      - Titre complet
+      - Nom de la chaîne
+      - URL complète de la vidéo
+      - Date de publication
+      - Description/extrait
+  
+  synthesize:
+    description: >
+      Crée une synthèse quotidienne complète sur "{topic_name}" à partir des articles et vidéos trouvés.
+      
+      Structure attendue :
+      # Synthèse {topic_name} - {date}
+      
+      ## 📊 Résumé
+      Vue d'ensemble en 2-3 phrases des points clés du jour.
+      
+      ## 📰 Actualités Principales  
+      Top 3-5 articles avec analyse et liens.
+      
+      ## 🎥 Vidéos Intéressantes
+      Top 3-4 vidéos avec points clés.
+      
+      ## 💡 Insights & Tendances
+      Analyse des patterns et tendances observés.
+      
+      ## 🔮 À Surveiller
+      Points d'attention pour les prochains jours.
+    agent: synthesizer
+    expected_output: >
+      Une synthèse en format Markdown, claire et structurée,
+      prête à être sauvegardée et partagée.
+
+# Paramètres généraux
+settings:
+  language: "fr"
+  max_results_per_search: 10
+  output_format: "markdown"
+  
+  # Répertoires
+  output_dir: "syntheses"
+  logs_dir: "logs"
+  
+  # Planification (pour usage futur avec cron)
+  schedule: "0 6 * * *"  # Tous les jours à 6h00
+  
+  # API Keys (utilise Doppler ou variables d'environnement)
+  api_keys:
+    serper: "${SERP_API_KEY}"  # Serper pour recherche Google + YouTube
+    openai: "${OPENAI_API_KEY}"  # OpenAI pour les agents CrewAI
