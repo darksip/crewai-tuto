@@ -44,10 +44,27 @@ doppler run -- python main.py --dry-run
 
 Tout se configure dans `veille.yaml` :
 
-- **Topics** : Nom, mots-clés, chaînes YouTube autorisées
+- **Topics** : Nom, mots-clés, **URLs YouTube complètes** (plus besoin d'IDs !)
 - **Agents** : Rôles, objectifs, contexte
-- **Tâches** : Description, agent assigné, format de sortie
+- **Tâches** : Description, agent assigné, format de sortie  
 - **Paramètres** : Langue, répertoires, planification
+
+### 📺 Configuration des chaînes YouTube
+
+Utilisez directement les **URLs complètes** des chaînes (copiées-collées depuis YouTube) :
+
+```yaml
+topics:
+  - name: "Intelligence Artificielle"
+    keywords: ["IA générative", "LLM", "ChatGPT"]
+    youtube_channels:
+      - "https://www.youtube.com/@Underscore_"           # Format @
+      - "https://www.youtube.com/@MachinelearniaTv"      # Format @  
+      - "https://www.youtube.com/c/Micode"               # Format /c/
+    volume: 8
+```
+
+**Plus simple à configurer** : copiez l'URL depuis votre navigateur !
 
 ## 📊 Résultats
 

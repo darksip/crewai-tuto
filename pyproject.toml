@@ -5,9 +5,11 @@ description = "Système de veille automatisée ultra-simple avec CrewAI - Config
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "crewai>=0.177.0",
+    "crewai>=0.177.0", 
     "crewai-tools>=0.69.0",
     "pyyaml>=6.0",
+    "feedparser>=6.0.0",
+    "requests>=2.28.0",
 ]
 
 [project.scripts]

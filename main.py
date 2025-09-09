@@ -7,8 +7,11 @@ Configuration 100% déclarative via YAML
 import yaml
 import os
 import argparse
-from datetime import datetime
+import requests
+import feedparser
+from datetime import datetime, timedelta
 from pathlib import Path
+import re
 
 # Imports CrewAI
 from crewai import Agent, Task, Crew
@@ -41,15 +44,141 @@ def create_agents(config):
     
     return agents
 
+def extract_channel_name(url):
+    """Extraire le nom de la chaîne depuis l'URL YouTube"""
+    try:
+        if '@' in url:
+            # Format: https://www.youtube.com/@Underscore_
+            return url.split('@')[-1]
+        elif '/c/' in url:
+            # Format: https://www.youtube.com/c/Micode  
+            return url.split('/c/')[-1]
+        elif '/channel/' in url:
+            # Format: https://www.youtube.com/channel/UCxxx
+            return url.split('/channel/')[-1]
+        else:
+            # Fallback: prendre la dernière partie après /
+            return url.split('/')[-1]
+    except:
+        return url  # Retourner l'URL si extraction échoue
+
+def get_channel_id_from_url(channel_url):
+    """Obtenir l'ID de la chaîne depuis son URL YouTube"""
+    try:
+        # Si c'est déjà un ID de chaîne
+        if channel_url.startswith('UC') and len(channel_url) == 24:
+            return channel_url
+            
+        # Si c'est une URL avec /channel/
+        if '/channel/' in channel_url:
+            return channel_url.split('/channel/')[-1]
+        
+        # Pour les URLs @username ou /c/, on doit faire une requête
+        response = requests.get(channel_url, timeout=10)
+        
+        # Chercher l'ID dans le HTML
+        channel_id_match = re.search(r'"channelId":"([^"]+)"', response.text)
+        if channel_id_match:
+            return channel_id_match.group(1)
+            
+        # Fallback: chercher dans les balises meta
+        meta_match = re.search(r'<meta property="og:url" content="[^"]*channel/([^"]+)"', response.text)
+        if meta_match:
+            return meta_match.group(1)
+            
+        print(f"⚠️ Impossible de trouver l'ID pour {channel_url}")
+        return None
+        
+    except Exception as e:
+        print(f"❌ Erreur extraction ID chaîne : {e}")
+        return None
+
+def get_recent_videos_from_rss(channel_url, hours_limit=24):
+    """Récupérer les vidéos récentes via RSS feed YouTube"""
+    try:
+        # Obtenir l'ID de la chaîne
+        channel_id = get_channel_id_from_url(channel_url)
+        if not channel_id:
+            return []
+        
+        # Construire l'URL du flux RSS
+        rss_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
+        
+        # Parser le flux RSS
+        feed = feedparser.parse(rss_url)
+        
+        if not feed.entries:
+            print(f"⚠️ Aucune vidéo trouvée dans le flux RSS pour {channel_url}")
+            return []
+        
+        # Filtrer par date (dernières X heures)
+        cutoff_time = datetime.now() - timedelta(hours=hours_limit)
+        recent_videos = []
+        
+        for entry in feed.entries:
+            try:
+                # Parser la date de publication
+                pub_date = datetime(*entry.published_parsed[:6])
+                
+                # Garder seulement les vidéos récentes
+                if pub_date > cutoff_time:
+                    video = {
+                        "title": entry.title,
+                        "url": entry.link,
+                        "published": entry.published,
+                        "channel": feed.feed.title if hasattr(feed.feed, 'title') else extract_channel_name(channel_url),
+                        "description": getattr(entry, 'summary', ''),
+                        "published_date": pub_date
+                    }
+                    recent_videos.append(video)
+                    
+            except Exception as e:
+                print(f"⚠️ Erreur parsing vidéo : {e}")
+                continue
+        
+        # Trier par date (plus récent en premier)
+        recent_videos.sort(key=lambda x: x['published_date'], reverse=True)
+        
+        return recent_videos
+        
+    except Exception as e:
+        print(f"❌ Erreur RSS pour {channel_url} : {e}")
+        return []
+
+def get_all_youtube_videos(topic):
+    """Récupérer toutes les vidéos récentes pour un topic via RSS"""
+    all_videos = []
+    
+    print(f"📡 Récupération RSS pour {topic['name']}...")
+    
+    for channel_url in topic['youtube_channels']:
+        channel_name = extract_channel_name(channel_url)
+        print(f"  📺 Analyse de {channel_name}...")
+        
+        videos = get_recent_videos_from_rss(channel_url, hours_limit=24)  # Retour à 24h
+        
+        if videos:
+            print(f"    ✅ {len(videos)} vidéo(s) récente(s) trouvée(s)")
+            all_videos.extend(videos)
+        else:
+            print(f"    ⚠️ Aucune vidéo récente")
+    
+    # Limiter au volume demandé et trier par pertinence
+    all_videos.sort(key=lambda x: x['published_date'], reverse=True)
+    return all_videos[:topic['volume']]
+
 def create_tasks(config, agents, topic):
     """Créer les tâches pour un topic donné"""
     tasks = []
+    
+    # Extraire les noms des chaînes depuis les URLs
+    channel_names = [extract_channel_name(url) for url in topic['youtube_channels']]
     
     # Préparer les variables pour le formatage
     variables = {
         'topic_name': topic['name'],
         'keywords': ', '.join(topic['keywords']),
-        'youtube_channels': ', '.join(topic['youtube_channels']),
+        'youtube_channels': ', '.join(topic['youtube_channels']),  # URLs complètes
         'volume': topic['volume'],
         'date': datetime.now().strftime('%d/%m/%Y')
     }
@@ -87,10 +216,25 @@ def run_veille_for_topic(config, agents, topic):
     """Exécuter la veille pour un topic"""
     print(f"\n🚀 Traitement du topic : {topic['name']}")
     
-    # Créer les tâches
-    tasks = create_tasks(config, agents, topic)
+    # Étape 1: Récupérer les vidéos récentes via RSS (plus fiable que Serper pour YouTube)
+    recent_videos = get_all_youtube_videos(topic)
     
-    # Ajouter l'outil Serper aux agents (un seul outil pour tout !)
+    # Préparer le contexte vidéos pour les agents
+    videos_context = ""
+    if recent_videos:
+        videos_context = "\n\nVIDÉOS YOUTUBE RÉCENTES TROUVÉES :\n"
+        for i, video in enumerate(recent_videos[:5], 1):
+            videos_context += f"{i}. **{video['title']}** ({video['channel']})\n"
+            videos_context += f"   URL: {video['url']}\n"
+            videos_context += f"   Publié: {video['published']}\n"
+            if video['description']:
+                videos_context += f"   Description: {video['description'][:100]}...\n"
+            videos_context += "\n"
+    
+    # Créer les tâches avec le contexte vidéos
+    tasks = create_tasks_with_video_context(config, agents, topic, videos_context)
+    
+    # Ajouter l'outil Serper aux agents (pour les articles seulement)
     search_tool = SerperDevTool()
     
     # Assigner l'outil Serper à tous les agents
@@ -106,7 +250,7 @@ def run_veille_for_topic(config, agents, topic):
     
     try:
         # Lancer l'exécution
-        print(f"⚡ Lancement du crew pour {topic['name']}...")
+        print(f"⚡ Lancement du crew pour {topic['name']} avec {len(recent_videos)} vidéos RSS...")
         result = crew.kickoff()
         
         # Sauvegarder le résultat
@@ -120,11 +264,46 @@ def run_veille_for_topic(config, agents, topic):
         print(f"❌ Erreur lors du traitement de {topic['name']} : {e}")
         return None
 
+def create_tasks_with_video_context(config, agents, topic, videos_context):
+    """Créer les tâches avec le contexte vidéos pré-récupéré"""
+    tasks = []
+    
+    # Extraire les noms des chaînes depuis les URLs
+    channel_names = [extract_channel_name(url) for url in topic['youtube_channels']]
+    
+    # Préparer les variables pour le formatage
+    variables = {
+        'topic_name': topic['name'],
+        'keywords': ', '.join(topic['keywords']),
+        'youtube_channels': ', '.join(topic['youtube_channels']),
+        'volume': topic['volume'],
+        'date': datetime.now().strftime('%d/%m/%Y'),
+        'videos_context': videos_context
+    }
+    
+    # Créer les tâches depuis la config
+    for task_name, task_config in config['tasks'].items():
+        description = task_config['description'].format(**variables)
+        
+        # Pour la tâche de synthèse, ajouter le contexte vidéos
+        if task_name == 'synthesize' and videos_context:
+            description += videos_context
+        
+        task = Task(
+            description=description,
+            expected_output=task_config['expected_output'],
+            agent=agents[task_config['agent']]
+        )
+        tasks.append(task)
+    
+    return tasks
+
 def main():
     parser = argparse.ArgumentParser(description="Veille CrewAI Simple")
     parser.add_argument("--config", default="veille.yaml", help="Fichier de configuration")
     parser.add_argument("--topic", help="Topic spécifique à traiter")
     parser.add_argument("--list-topics", action="store_true", help="Lister les topics")
+    parser.add_argument("--test-rss", action="store_true", help="Tester les flux RSS YouTube")
     parser.add_argument("--dry-run", action="store_true", help="Mode simulation")
     
     args = parser.parse_args()
@@ -147,10 +326,34 @@ def main():
     if args.list_topics:
         print("📋 Topics configurés :")
         for topic in config['topics']:
+            # Extraire les noms des chaînes pour l'affichage
+            channel_names = [extract_channel_name(url) for url in topic['youtube_channels']]
+            
             print(f"  • {topic['name']} (volume: {topic['volume']})")
             print(f"    Mots-clés : {', '.join(topic['keywords'])}")
-            print(f"    Chaînes : {len(topic['youtube_channels'])} chaînes YouTube")
+            print(f"    Chaînes YouTube : {', '.join(channel_names)}")
             print()
+        return 0
+    
+    # Tester les flux RSS YouTube
+    if args.test_rss:
+        print("🧪 Test des flux RSS YouTube...")
+        print("=" * 50)
+        
+        for topic in config['topics']:
+            print(f"\n📺 Topic : {topic['name']}")
+            videos = get_all_youtube_videos(topic)
+            
+            if videos:
+                print(f"✅ {len(videos)} vidéo(s) récente(s) :")
+                for video in videos[:3]:  # Afficher les 3 premières
+                    print(f"  • {video['title']}")
+                    print(f"    Chaîne: {video['channel']} | Publié: {video['published']}")
+                    print(f"    URL: {video['url']}")
+                    print()
+            else:
+                print("⚠️ Aucune vidéo récente trouvée")
+                
         return 0
     
     # Note: Les API keys sont gérées par Doppler automatiquement

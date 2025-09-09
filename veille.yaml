@@ -3,27 +3,27 @@
 # Topics à surveiller
 topics:
   - name: "Intelligence Artificielle"
-    keywords: ["IA générative", "LLM", "ChatGPT", "Claude", "Gemini"]
+    keywords: ["IA générative", "LLM", "ChatGPT", "Claude", "Gemini"] 
     youtube_channels:
-      - "Underscore_"
-      - "Machine Learnia"
-      - "Micode"
+      - "https://www.youtube.com/channel/UCWty1tzwZW_ZNSp5GVGteaA"  # Two Minutes Papers (très actif)
+      - "https://www.youtube.com/channel/UCdN4aXTrHAtfgbVG9HjBmxQ"  # Underscore_
+      - "https://www.youtube.com/channel/UC9-y-6csu5WGm29I7JiwpnA"  # Computerphile (très actif)
     volume: 8
     
   - name: "Crypto Finance"
     keywords: ["Bitcoin", "Ethereum", "DeFi", "blockchain"]
     youtube_channels:
-      - "Hasheur"
-      - "Captain Altcoin"
-      - "Crypto Matrix"
+      - "https://www.youtube.com/@Hasheur"
+      - "https://www.youtube.com/@CaptainAltcoin"
+      - "https://www.youtube.com/@CryptoMatrix"
     volume: 6
     
   - name: "Tech Startups"
     keywords: ["startup française", "financement", "levée de fonds", "licorne"]
     youtube_channels:
-      - "The Family"
-      - "Station F"
-      - "French Tech"
+      - "https://www.youtube.com/@TheFamily"
+      - "https://www.youtube.com/@StationF"
+      - "https://www.youtube.com/@FrenchTech"
     volume: 5
 
 # Configuration des agents
@@ -46,47 +46,28 @@ agents:
 
 # Configuration des tâches
 tasks:
-  search_news:
+  search_articles:
     description: >
-      Recherche les actualités les plus récentes (dernières 24h) sur le topic "{topic_name}".
+      Recherche les articles et actualités les plus récentes (dernières 24h) sur le topic "{topic_name}".
       Utilise les mots-clés : {keywords}
       Trouve {volume} articles pertinents et récents.
-      Concentre-toi sur les sources fiables et l'information de qualité.
+      Concentre-toi sur les sources fiables et l'information de qualité française et internationale.
     agent: researcher
     expected_output: >
       Une liste d'articles avec :
-      - Titre
-      - Source  
-      - URL
-      - Résumé en 2-3 phrases
-      - Date de publication
-    
-  search_videos:
-    description: >
-      Recherche les vidéos YouTube les plus récentes (dernières 24h) sur le topic "{topic_name}".
-      
-      STRATÉGIE DE RECHERCHE :
-      Pour chaque chaîne autorisée ({youtube_channels}), effectue une recherche Google avec :
-      - site:youtube.com "Nom de la chaîne" {keywords}
-      
-      Exemple de requêtes :
-      - site:youtube.com "Underscore_" {keywords}
-      - site:youtube.com "Machine Learnia" {keywords}
-      
-      Filtre par date : dernières 24h
-      Trouve {volume} vidéos pertinentes au total.
-    agent: researcher
-    expected_output: >
-      Une liste de vidéos YouTube avec :
       - Titre complet
-      - Nom de la chaîne
-      - URL complète de la vidéo
+      - Source fiable
+      - URL de l'article
       - Date de publication
-      - Description/extrait
+      - Résumé en 2-3 phrases
   
   synthesize:
     description: >
-      Crée une synthèse quotidienne complète sur "{topic_name}" à partir des articles et vidéos trouvés.
+      Crée une synthèse quotidienne complète sur "{topic_name}" à partir des articles trouvés ET des vidéos YouTube récentes déjà récupérées via RSS.
+      
+      SOURCES DISPONIBLES :
+      1. Articles trouvés par recherche Serper
+      2. Vidéos YouTube récentes (dernières 24h) déjà récupérées via flux RSS{videos_context}
       
       Structure attendue :
       # Synthèse {topic_name} - {date}
@@ -97,17 +78,18 @@ tasks:
       ## 📰 Actualités Principales  
       Top 3-5 articles avec analyse et liens.
       
-      ## 🎥 Vidéos Intéressantes
-      Top 3-4 vidéos avec points clés.
+      ## 🎥 Vidéos YouTube Récentes
+      Analyse des vidéos récentes trouvées via RSS (vraiment récentes, dernières 24h).
       
       ## 💡 Insights & Tendances
-      Analyse des patterns et tendances observés.
+      Analyse croisée articles + vidéos, patterns observés.
       
       ## 🔮 À Surveiller
       Points d'attention pour les prochains jours.
     agent: synthesizer
     expected_output: >
       Une synthèse en format Markdown, claire et structurée,
+      utilisant BOTH les articles ET les vidéos récentes RSS,
       prête à être sauvegardée et partagée.
 
 # Paramètres généraux
