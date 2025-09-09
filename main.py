@@ -12,6 +12,7 @@ import feedparser
 from datetime import datetime, timedelta
 from pathlib import Path
 import re
+import subprocess
 
 # Imports CrewAI
 from crewai import Agent, Task, Crew
@@ -63,7 +64,7 @@ def extract_channel_name(url):
         return url  # Retourner l'URL si extraction échoue
 
 def get_channel_id_from_url(channel_url):
-    """Obtenir l'ID de la chaîne depuis son URL YouTube"""
+    """Obtenir l'ID de la chaîne depuis son URL YouTube - Méthode curl/grep simple"""
     try:
         # Si c'est déjà un ID de chaîne
         if channel_url.startswith('UC') and len(channel_url) == 24:
@@ -71,26 +72,25 @@ def get_channel_id_from_url(channel_url):
             
         # Si c'est une URL avec /channel/
         if '/channel/' in channel_url:
-            return channel_url.split('/channel/')[-1]
+            return channel_url.split('/channel/')[-1].split('?')[0]
         
-        # Pour les URLs @username ou /c/, on doit faire une requête
-        response = requests.get(channel_url, timeout=10)
+        # Utiliser la méthode curl/grep qui fonctionne parfaitement
+        import subprocess
         
-        # Chercher l'ID dans le HTML
-        channel_id_match = re.search(r'"channelId":"([^"]+)"', response.text)
-        if channel_id_match:
-            return channel_id_match.group(1)
-            
-        # Fallback: chercher dans les balises meta
-        meta_match = re.search(r'<meta property="og:url" content="[^"]*channel/([^"]+)"', response.text)
-        if meta_match:
-            return meta_match.group(1)
-            
+        cmd = f'''curl -sL "{channel_url}" | grep -oE '("channelId"|"externalId"|"ownerChannelId"):"UC[-_0-9A-Za-z]{{22}}' | head -n1 | grep -oE 'UC[-_0-9A-Za-z]{{22}}' '''
+        
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
+        
+        if result.returncode == 0 and result.stdout.strip():
+            channel_id = result.stdout.strip()
+            if channel_id.startswith('UC') and len(channel_id) == 24:
+                return channel_id
+        
         print(f"⚠️ Impossible de trouver l'ID pour {channel_url}")
         return None
         
     except Exception as e:
-        print(f"❌ Erreur extraction ID chaîne : {e}")
+        print(f"❌ Erreur extraction ID chaîne {channel_url}: {e}")
         return None
 
 def get_recent_videos_from_rss(channel_url, hours_limit=24):
@@ -155,7 +155,7 @@ def get_all_youtube_videos(topic):
         channel_name = extract_channel_name(channel_url)
         print(f"  📺 Analyse de {channel_name}...")
         
-        videos = get_recent_videos_from_rss(channel_url, hours_limit=24)  # Retour à 24h
+        videos = get_recent_videos_from_rss(channel_url, hours_limit=72)  # 3 jours pour voir GosuCoder
         
         if videos:
             print(f"    ✅ {len(videos)} vidéo(s) récente(s) trouvée(s)")

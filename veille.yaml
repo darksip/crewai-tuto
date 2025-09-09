@@ -5,9 +5,9 @@ topics:
   - name: "Intelligence Artificielle"
     keywords: ["IA générative", "LLM", "ChatGPT", "Claude", "Gemini"] 
     youtube_channels:
-      - "https://www.youtube.com/channel/UCWty1tzwZW_ZNSp5GVGteaA"  # Two Minutes Papers (très actif)
-      - "https://www.youtube.com/channel/UCdN4aXTrHAtfgbVG9HjBmxQ"  # Underscore_
-      - "https://www.youtube.com/channel/UC9-y-6csu5WGm29I7JiwpnA"  # Computerphile (très actif)
+      - "https://www.youtube.com/@Underscore_"
+      - "https://www.youtube.com/@GosuCoder"
+      - "https://www.youtube.com/c/Micode"
     volume: 8
     
   - name: "Crypto Finance"
