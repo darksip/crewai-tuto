@@ -1,0 +1,46 @@
+# Configuration des tâches CrewAI
+search_articles:
+  description: >
+    Recherche les articles et actualités les plus récentes (dernières 24h) sur le topic "{topic_name}".
+    Utilise les mots-clés : {keywords}
+    Trouve {volume} articles pertinents et récents.
+    Concentre-toi sur les sources fiables et l'information de qualité française et internationale.
+  agent: researcher
+  expected_output: >
+    Une liste d'articles avec :
+    - Titre complet
+    - Source fiable
+    - URL de l'article
+    - Date de publication
+    - Résumé en 2-3 phrases
+
+synthesize:
+  description: >
+    Crée une synthèse quotidienne complète sur "{topic_name}" à partir des articles trouvés ET des vidéos YouTube récentes déjà récupérées via RSS.
+    
+    SOURCES DISPONIBLES :
+    1. Articles trouvés par recherche Serper
+    2. Vidéos YouTube récentes (dernières 24h) déjà récupérées via flux RSS{videos_context}
+    
+    Structure attendue :
+    # Synthèse {topic_name} - {date}
+    
+    ## 📊 Résumé
+    Vue d'ensemble en 2-3 phrases des points clés du jour.
+    
+    ## 📰 Actualités Principales  
+    Top 3-5 articles avec analyse et liens.
+    
+    ## 🎥 Vidéos YouTube Récentes
+    Analyse des vidéos récentes trouvées via RSS (vraiment récentes, dernières 24h).
+    
+    ## 💡 Insights & Tendances
+    Analyse croisée articles + vidéos, patterns observés.
+    
+    ## 🔮 À Surveiller
+    Points d'attention pour les prochains jours.
+  agent: synthesizer
+  expected_output: >
+    Une synthèse en format Markdown, claire et structurée,
+    utilisant BOTH les articles ET les vidéos récentes RSS,
+    prête à être sauvegardée et partagée.

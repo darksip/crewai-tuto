@@ -6,13 +6,9 @@ Configuration 100% déclarative via YAML
 
 import yaml
 import argparse
-from datetime import datetime
-
-# Imports CrewAI
-from crewai import Agent, Task, Crew
-from crewai_tools import SerperDevTool
 
 # Imports modules locaux
+from veille_crew import VeilleCrew
 from youtube_processor import collect_videos_for_topic, test_rss_feeds, extract_channel_name
 from daily_manager import (
     filter_new_videos, group_videos_by_date, save_synthesis_by_date,
@@ -20,8 +16,8 @@ from daily_manager import (
 )
 
 
-def load_config(config_file="veille.yaml"):
-    """Charger la configuration YAML"""
+def load_config(config_file="config/topics.yaml"):
+    """Charger la configuration des topics"""
     try:
         with open(config_file, "r", encoding="utf-8") as f:
             return yaml.safe_load(f)
@@ -33,52 +29,11 @@ def load_config(config_file="veille.yaml"):
         return None
 
 
-def create_agents(config):
-    """Créer les agents depuis la configuration"""
-    agents = {}
-
-    for name, agent_config in config["agents"].items():
-        agent = Agent(
-            role=agent_config["role"],
-            goal=agent_config["goal"],
-            backstory=agent_config["backstory"],
-            verbose=True,
-        )
-        agents[name] = agent
-
-    return agents
 
 
 
 
-def create_tasks(config, agents, topic):
-    """Créer les tâches pour un topic donné"""
-    tasks = []
-
-    # Préparer les variables pour le formatage
-    variables = {
-        "topic_name": topic["name"],
-        "keywords": ", ".join(topic["keywords"]),
-        "youtube_channels": ", ".join(topic["youtube_channels"]),  # URLs complètes
-        "volume": topic["volume"],
-        "date": datetime.now().strftime("%d/%m/%Y"),
-    }
-
-    # Créer les tâches depuis la config
-    for task_name, task_config in config["tasks"].items():
-        task = Task(
-            description=task_config["description"].format(**variables),
-            expected_output=task_config["expected_output"],
-            agent=agents[task_config["agent"]],
-        )
-        tasks.append(task)
-
-    return tasks
-
-
-
-
-def run_veille_for_topic(config, agents, topic):
+def run_veille_for_topic(topic):
     """Exécuter la veille pour un topic avec persistence par date de publication"""
     print(f"\n🚀 Traitement du topic : {topic['name']}")
 
@@ -98,12 +53,12 @@ def run_veille_for_topic(config, agents, topic):
 
     processed_syntheses = []
 
-    # Traiter chaque jour séparément
+    # Traiter chaque jour séparément avec VeilleCrew
     for pub_date, date_videos in sorted(videos_by_date.items(), reverse=True):
         print(f"\n📆 Traitement des vidéos du {pub_date} ({len(date_videos)} vidéos)")
 
         # Créer et exécuter la synthèse pour cette date
-        synthesis_file = process_date_videos(config, agents, topic, pub_date, date_videos)
+        synthesis_file = process_date_videos(topic, pub_date, date_videos)
         
         if synthesis_file:
             processed_syntheses.append(synthesis_file)
@@ -112,8 +67,8 @@ def run_veille_for_topic(config, agents, topic):
     return processed_syntheses
 
 
-def process_date_videos(config, agents, topic, pub_date, date_videos):
-    """Traiter les vidéos d'une date spécifique avec CrewAI"""
+def process_date_videos(topic, pub_date, date_videos):
+    """Traiter les vidéos d'une date spécifique avec VeilleCrew moderne"""
     # Préparer le contexte vidéos pour les agents
     videos_context = f"\n\nVIDÉOS YOUTUBE DU {pub_date} :\n"
     for i, video in enumerate(date_videos, 1):
@@ -124,20 +79,12 @@ def process_date_videos(config, agents, topic, pub_date, date_videos):
             videos_context += f"   Description: {video['description'][:100]}...\n"
         videos_context += "\n"
 
-    # Créer les tâches CrewAI avec contexte
-    tasks = create_tasks_with_video_context(config, agents, topic, videos_context, pub_date)
-
-    # Configurer les agents avec outils
-    search_tool = SerperDevTool()
-    for agent in agents.values():
-        agent.tools = [search_tool]
-
-    # Créer et lancer le crew CrewAI
-    crew = Crew(agents=list(agents.values()), tasks=tasks, verbose=True)
-
     try:
-        print(f"⚡ Lancement analyse CrewAI pour {pub_date}...")
-        result = crew.kickoff()
+        print(f"⚡ Lancement VeilleCrew pour {pub_date}...")
+        
+        # Créer et lancer le crew moderne avec decorators
+        crew_instance = VeilleCrew.create_for_topic(topic, videos_context, pub_date)
+        result = crew_instance.kickoff_for_topic(topic, videos_context, pub_date)
 
         # Sauvegarder via daily_manager
         synthesis_file = save_synthesis_by_date(str(result), topic['name'], pub_date)
@@ -148,51 +95,16 @@ def process_date_videos(config, agents, topic, pub_date, date_videos):
         return synthesis_file
 
     except Exception as e:
-        print(f"❌ Erreur traitement CrewAI {pub_date} : {e}")
+        print(f"❌ Erreur traitement VeilleCrew {pub_date} : {e}")
         return None
 
 
-def create_tasks_with_video_context(
-    config, agents, topic, videos_context, pub_date=None
-):
-    """Créer les tâches avec le contexte vidéos pré-récupéré pour une date spécifique"""
-    tasks = []
-
-    # Utiliser la date de publication ou aujourd'hui
-    target_date = pub_date if pub_date else datetime.now().date()
-
-    # Préparer les variables pour le formatage
-    variables = {
-        "topic_name": topic["name"],
-        "keywords": ", ".join(topic["keywords"]),
-        "youtube_channels": ", ".join(topic["youtube_channels"]),
-        "volume": topic["volume"],
-        "date": target_date.strftime("%d/%m/%Y"),
-        "videos_context": videos_context,
-    }
-
-    # Créer les tâches depuis la config
-    for task_name, task_config in config["tasks"].items():
-        description = task_config["description"].format(**variables)
-
-        # Pour la tâche de synthèse, ajouter le contexte vidéos
-        if task_name == "synthesize" and videos_context:
-            description += videos_context
-
-        task = Task(
-            description=description,
-            expected_output=task_config["expected_output"],
-            agent=agents[task_config["agent"]],
-        )
-        tasks.append(task)
-
-    return tasks
 
 
 def main():
     parser = argparse.ArgumentParser(description="Veille CrewAI Simple")
     parser.add_argument(
-        "--config", default="veille.yaml", help="Fichier de configuration"
+        "--config", default="config/topics.yaml", help="Fichier de configuration topics"
     )
     parser.add_argument("--topic", help="Topic spécifique à traiter")
     parser.add_argument("--list-topics", action="store_true", help="Lister les topics")
@@ -253,11 +165,7 @@ def main():
         print("🧪 Mode simulation - Pas d'appels API")
         return 0
 
-    # Créer les agents
-    agents = create_agents(config)
-    print(f"🎭 {len(agents)} agents créés : {', '.join(agents.keys())}")
-
-    # Traitement des topics
+    # Traitement des topics avec VeilleCrew moderne
     topics_to_process = config["topics"]
 
     # Filtrer par topic si spécifié
@@ -269,10 +177,12 @@ def main():
             print(f"❌ Topic '{args.topic}' non trouvé")
             return 1
 
-    # Traiter chaque topic
+    print("🎭 Utilisation VeilleCrew avec decorators @agent/@task/@crew")
+
+    # Traiter chaque topic avec la classe moderne
     results = []
     for topic in topics_to_process:
-        filename = run_veille_for_topic(config, agents, topic)
+        filename = run_veille_for_topic(topic)
         if filename:
             results.append(filename)
 

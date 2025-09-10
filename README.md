@@ -2,24 +2,30 @@
 
 Système de veille automatisée **ultra-simple** avec CrewAI. Configuration 100% déclarative via YAML + gestion des secrets avec Doppler.
 
-## 📁 Structure modulaire
+## 📁 Structure modulaire avec decorators CrewAI 2025
 
 ```
 crewai-veille-simple/
-├── veille.yaml         # ⚙️  Configuration complète 
-├── main.py             # 🚀 Orchestration CrewAI (289 lignes)
+├── config/
+│   ├── topics.yaml      # 🎯 Topics et paramètres métier
+│   ├── agents.yaml      # 🤖 Configuration agents CrewAI
+│   └── tasks.yaml       # 📋 Configuration tâches CrewAI
+├── veille_crew.py       # 🎭 Classe @CrewBase avec decorators (146 lignes)
+├── main.py              # 🚀 Orchestration principale (199 lignes)
 ├── youtube_processor.py # 📺 Logique YouTube RSS (171 lignes)  
-├── daily_manager.py    # 🗂️  Persistence quotidienne (200 lignes)
-├── pyproject.toml      # 📦 Dépendances minimales (5 packages)
-├── README.md           # 📖 Documentation
-└── daily/              # 📊 Données générées (ignoré par git)
-    └── YYYY-MM-DD/     # Organisation par date de publication
+├── daily_manager.py     # 🗂️ Persistence quotidienne (200 lignes)
+├── pyproject.toml       # 📦 Dépendances (5 packages)
+├── README.md            # 📖 Documentation
+└── daily/               # 📊 Données générées (ignoré par git)
+    └── YYYY-MM-DD/      # Organisation par date de publication
 ```
 
-### 🧩 Séparation des responsabilités
-- **main.py** → Mécanique CrewAI pure (agents, tâches, crews)
-- **youtube_processor.py** → YouTube RSS, Channel ID, collecte vidéos
-- **daily_manager.py** → Persistence, organisation par dates, évitement doublons
+### 🧩 Séparation moderne des responsabilités
+- **main.py** → CLI et orchestration niveau topic
+- **veille_crew.py** → Classe CrewAI avec @agent/@task/@crew/@tool
+- **youtube_processor.py** → YouTube RSS, Channel ID, collecte
+- **daily_manager.py** → Persistence, organisation par dates  
+- **config/** → Configurations YAML séparées par domaine
 
 ## 🚀 Installation
 
@@ -55,31 +61,48 @@ doppler run -- python main.py --topic "Intelligence Artificielle"
 doppler run -- python main.py --dry-run
 ```
 
-## ⚙️ Configuration
+## ⚙️ Configuration modulaire
 
-Tout se configure dans `veille.yaml` :
+Configuration séparée par domaine dans `config/` :
 
-- **Topics** : Nom, mots-clés, **URLs YouTube complètes** (plus besoin d'IDs !)
-- **Agents** : Rôles, objectifs, contexte
-- **Tâches** : Description, agent assigné, format de sortie  
-- **Paramètres** : Langue, répertoires, planification
-
-### 📺 Configuration des chaînes YouTube
-
-Utilisez directement les **URLs complètes** des chaînes (copiées-collées depuis YouTube) :
-
+### 📁 config/topics.yaml - Données métier
 ```yaml
 topics:
   - name: "Intelligence Artificielle"
     keywords: ["IA générative", "LLM", "ChatGPT"]
     youtube_channels:
-      - "https://www.youtube.com/@Underscore_"           # Format @
-      - "https://www.youtube.com/@MachinelearniaTv"      # Format @  
-      - "https://www.youtube.com/c/Micode"               # Format /c/
+      - "https://www.youtube.com/@Underscore_"
+      - "https://www.youtube.com/@GosuCoder"
     volume: 8
 ```
 
-**Plus simple à configurer** : copiez l'URL depuis votre navigateur !
+### 🤖 config/agents.yaml - Agents CrewAI
+```yaml
+researcher:
+  role: "Chercheur Web Senior"
+  goal: "Trouver les actualités les plus récentes"
+  backstory: "Expert en recherche d'information..."
+
+synthesizer:
+  role: "Rédacteur de Synthèses"  
+  goal: "Créer des synthèses claires"
+  backstory: "Journaliste tech expérimenté..."
+```
+
+### 📋 config/tasks.yaml - Tâches CrewAI
+```yaml
+search_articles:
+  description: "Recherche les actualités sur {topic_name}..."
+  agent: researcher
+  expected_output: "Liste d'articles structurée..."
+
+synthesize:
+  description: "Crée une synthèse complète..."
+  agent: synthesizer
+  expected_output: "Synthèse markdown finale..."
+```
+
+💡 **URLs YouTube** : Utilisez directement les URLs complètes (@username, /c/, /channel/) - copiez depuis votre navigateur !
 
 ## 🔄 Fonctionnement du système
 
@@ -93,6 +116,35 @@ topics:
 2. **Évite les doublons** → `videos_processed.json` par date
 3. **Synthèses datées** → Une par topic par jour de publication
 4. **Exécutions multiples** → Seules les nouvelles vidéos sont traitées
+
+### 🎭 Architecture CrewAI moderne (2025)
+
+Le projet suit les **standards CrewAI 2025** avec decorators :
+
+```python
+@CrewBase
+class VeilleCrew:
+    agents_config = 'config/agents.yaml'
+    tasks_config = 'config/tasks.yaml'
+    
+    @tool
+    def serper_search(self):
+        return SerperDevTool()
+    
+    @agent
+    def researcher(self) -> Agent:
+        return Agent(config=self.agents_config['researcher'])
+    
+    @task  
+    def search_articles(self) -> Task:
+        return Task(config=self.tasks_config['search_articles'])
+    
+    @crew
+    def crew(self) -> Crew:
+        return Crew(agents=self.agents, tasks=self.tasks)
+```
+
+**Avantages** : Auto-découverte agents/tâches, configuration séparée, architecture standard
 
 ## 📊 Résultats et Organisation
 
@@ -141,22 +193,40 @@ Pour automatiser l'exécution quotidienne, ajoutez à votre crontab :
 
 ## 📝 Personnalisation
 
-1. **Modifier les topics** : Éditer la section `topics` dans `veille.yaml`
-2. **Ajuster les agents** : Modifier les `role`, `goal`, `backstory`
-3. **Personnaliser les tâches** : Changer les descriptions et formats
-4. **Paramétrer** : Adapter la section `settings`
+### 🎯 Modifications par fichier
+1. **Topics** : Éditer `config/topics.yaml` → Ajouter sujets, chaînes YouTube, mots-clés
+2. **Agents** : Modifier `config/agents.yaml` → Ajuster `role`, `goal`, `backstory`  
+3. **Tâches** : Adapter `config/tasks.yaml` → Changer descriptions, formats de sortie
+4. **Architecture** : Étendre `veille_crew.py` → Ajouter @agent/@task/@tool
+
+### 🔧 Ajout d'un nouvel agent
+```python
+# Dans veille_crew.py
+@agent
+def analyzer(self) -> Agent:
+    return Agent(config=self.agents_config['analyzer'])
+```
+
+```yaml
+# Dans config/agents.yaml  
+analyzer:
+  role: "Analyste de Tendances"
+  goal: "Identifier les patterns émergents"
+  backstory: "Expert en analyse prédictive..."
+```
 
 ## 🆚 Comparaison
 
 | Aspect | Version Complexe | Version Simple |
 |--------|------------------|----------------|
-| Lignes de code | 3700 | 580 |
-| Fichiers Python | 18 | 1 |
+| Lignes de code | 3700 | 716 (4 modules) |
+| Fichiers Python | 18 | 4 |
 | Packages | 84 | 5 |
-| Configuration | Code Python dispersé | YAML déclaratif |
+| Configuration | Code Python dispersé | YAML séparés + decorators |
 | Gestion secrets | Variables d'env | Doppler intégré |
 | YouTube | API + outils complexes | RSS feeds natifs |
 | Persistence | Système complexe | daily/ par date publication |
+| Architecture | Monolithique | @CrewBase decorators modernes |
 | Maintenance | Très difficile | Ultra facile |
 
-**Résultat** : **6x moins de complexité** avec persistence intelligente ! 🎉
+**Résultat** : **5x moins de complexité** + architecture CrewAI 2025 ! 🎉

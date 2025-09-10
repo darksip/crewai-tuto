@@ -1,0 +1,43 @@
+# Configuration des topics de veille
+topics:
+  - name: "Intelligence Artificielle"
+    keywords: ["IA générative", "LLM", "ChatGPT", "Claude", "Gemini"] 
+    youtube_channels:
+      - "https://www.youtube.com/@Underscore_"
+      - "https://www.youtube.com/@GosuCoder"
+      - "https://www.youtube.com/c/Micode"
+    volume: 8
+    
+  - name: "Crypto Finance"
+    keywords: ["Bitcoin", "Ethereum", "DeFi", "blockchain"]
+    youtube_channels:
+      - "https://www.youtube.com/@Hasheur"
+      - "https://www.youtube.com/@CaptainAltcoin"
+      - "https://www.youtube.com/@CryptoMatrix"
+    volume: 6
+    
+  - name: "Tech Startups"
+    keywords: ["startup française", "financement", "levée de fonds", "licorne"]
+    youtube_channels:
+      - "https://www.youtube.com/@TheFamily"
+      - "https://www.youtube.com/@StationF"
+      - "https://www.youtube.com/@FrenchTech"
+    volume: 5
+
+# Paramètres généraux
+settings:
+  language: "fr"
+  max_results_per_search: 10
+  output_format: "markdown"
+  
+  # Répertoires
+  output_dir: "syntheses"
+  logs_dir: "logs"
+  
+  # Planification (pour usage futur avec cron)
+  schedule: "0 6 * * *"  # Tous les jours à 6h00
+  
+  # API Keys (utilise Doppler ou variables d'environnement)
+  api_keys:
+    serper: "${SERP_API_KEY}"  # Serper pour recherche Google + YouTube
+    openai: "${OPENAI_API_KEY}"  # OpenAI pour les agents CrewAI
