@@ -14,3 +14,6 @@ syntheses/
 db/
 *.lock
 logs/
+
+# Daily processing data
+daily/

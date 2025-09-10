@@ -30,6 +30,12 @@ doppler secrets set OPENAI_API_KEY "votre-clé-openai"
 # Lister les topics configurés
 doppler run -- python main.py --list-topics
 
+# Tester les flux RSS YouTube
+doppler run -- python main.py --test-rss
+
+# Voir le statut des répertoires daily
+doppler run -- python main.py --status-daily
+
 # Traiter tous les topics
 doppler run -- python main.py
 
@@ -66,11 +72,29 @@ topics:
 
 **Plus simple à configurer** : copiez l'URL depuis votre navigateur !
 
-## 📊 Résultats
+## 📊 Résultats et Organisation
 
-Les synthèses sont générées dans le dossier `syntheses/` :
-- Format : `synthese_[Topic]_[Date].md`
-- Structure : Résumé, Actualités, Vidéos, Insights, À surveiller
+### 🗂️ Structure automatique par date de publication
+
+```
+daily/
+├── 2025-09-09/
+│   ├── videos_processed.json           # Vidéos traitées ce jour
+│   └── synthese_Intelligence_Artificielle_2025-09-09.md
+├── 2025-09-08/
+│   ├── videos_processed.json
+│   └── synthese_Crypto_Finance_2025-09-08.md
+└── 2025-09-07/
+    ├── videos_processed.json
+    └── synthese_Tech_Startups_2025-09-07.md
+```
+
+### 📹 Système de persistence intelligent
+
+- **Récupération 7 jours** de vidéos RSS par chaîne
+- **Traitement par date de publication** (pas d'exécution)
+- **Évite les doublons** : chaque vidéo traitée une seule fois
+- **Synthèses datées** : une par topic par jour de publication
 
 ## 🎭 Agents
 
