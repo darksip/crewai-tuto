@@ -1,6 +1,39 @@
-# CrewAI Veille Simple
+# CrewAI Veille Simple - 📚 Projet Tutoriel
 
-Système de veille automatisée **ultra-simple** avec CrewAI. Configuration 100% déclarative via YAML + gestion des secrets avec Doppler.
+**Projet d'apprentissage CrewAI 2025** - Système de veille automatisée servant d'exemple complet pour maîtriser :
+
+🎯 **Objectifs pédagogiques** :
+- **Decorators modernes** : @CrewBase, @agent, @task, @crew, @tool
+- **Architecture modulaire** : Séparation responsabilités, config YAML
+- **Intégrations externes** : RSS YouTube, API Serper, persistence
+- **Patterns avancés** : Factory methods, auto-découverte, pipeline séquentiel
+
+💡 **Code richement commenté** : Chaque concept CrewAI expliqué avec des commentaires `# TUTORIEL:` détaillés
+
+## 📚 Apprentissage CrewAI
+
+### 🎓 Concepts démontrés dans le code
+
+- **`veille_crew.py`** → Architecture @CrewBase complète avec tous decorators
+- **`main.py`** → Orchestration niveau métier et utilisation de VeilleCrew  
+- **`config/*.yaml`** → Configuration externe des agents et tâches
+- **`youtube_processor.py`** → Intégration de sources externes
+- **`daily_manager.py`** → Gestion de la persistence et anti-doublons
+
+### 💭 Questions d'apprentissage
+
+En lisant le code, demandez-vous :
+1. **Comment @CrewBase découvre-t-il automatiquement les @agent/@task ?**
+2. **Pourquoi séparer agents.yaml de tasks.yaml ?**
+3. **Comment les variables {topic_name} sont-elles injectées ?**
+4. **Quel est l'avantage de Process.sequential vs hierarchical ?**
+5. **Comment créer un nouvel @agent avec ses propres @tool ?**
+
+### 🔍 Points d'attention
+
+- **Auto-découverte** : `self.agents` et `self.tasks` sont automatiquement peuplés
+- **Configuration dynamique** : Variables injectées au runtime dans les descriptions
+- **Modularité** : Chaque decorator a un rôle spécifique et clairement défini
 
 ## 📁 Structure modulaire avec decorators CrewAI 2025
 

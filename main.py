@@ -1,18 +1,37 @@
 #!/usr/bin/env python3
 """
-Système de veille CrewAI - Version Simple
-Configuration 100% déclarative via YAML
+TUTORIEL CREWAI - Système de veille automatisée avec agents IA
+
+Ce projet sert d'exemple complet d'utilisation de CrewAI 2025 pour :
+- Orchestrer plusieurs agents IA spécialisés
+- Utiliser les decorators modernes (@CrewBase, @agent, @task)
+- Intégrer des sources de données externes (RSS, API)
+- Organiser le traitement par date avec persistence
+- Gérer la configuration via fichiers YAML séparés
+
+Architecture démontrée :
+- VeilleCrew : Équipe d'agents avec decorators
+- YouTube RSS : Collecte automatique de vidéos
+- Daily persistence : Évitement des doublons par date
+- CLI complète : Interface utilisateur intuitive
 """
 
 import yaml
 import argparse
 
-# Imports modules locaux
-from veille_crew import VeilleCrew
-from youtube_processor import collect_videos_for_topic, test_rss_feeds, extract_channel_name
-from daily_manager import (
-    filter_new_videos, group_videos_by_date, save_synthesis_by_date,
-    mark_videos_as_processed, display_daily_status
+# TUTORIEL: Imports des modules du projet
+from veille_crew import VeilleCrew  # Classe principale avec decorators CrewAI
+from youtube_processor import (
+    collect_videos_for_topic,
+    test_rss_feeds,
+    extract_channel_name,
+)  # Logique YouTube
+from daily_manager import (  # Gestion persistence quotidienne
+    filter_new_videos,
+    group_videos_by_date,
+    save_synthesis_by_date,
+    mark_videos_as_processed,
+    display_daily_status,
 )
 
 
@@ -29,47 +48,63 @@ def load_config(config_file="config/topics.yaml"):
         return None
 
 
-
-
-
-
 def run_veille_for_topic(topic):
-    """Exécuter la veille pour un topic avec persistence par date de publication"""
+    """
+    TUTORIEL: Pipeline principal de traitement d'un topic
+
+    Cette fonction montre l'orchestration niveau métier :
+    1. Collecte des données (YouTube RSS)
+    2. Filtrage intelligent (éviter doublons)
+    3. Organisation par date (daily/)
+    4. Traitement par VeilleCrew (agents IA)
+    """
     print(f"\n🚀 Traitement du topic : {topic['name']}")
 
-    # Étape 1: Collecter toutes les vidéos YouTube (7 jours)
+    # TUTORIEL: Étape 1 - Collecte des données externes
+    # youtube_processor récupère 7 jours de vidéos via flux RSS natifs
     all_videos = collect_videos_for_topic(topic)
-    
-    # Étape 2: Filtrer les nouvelles vidéos (non encore traitées)
+
+    # TUTORIEL: Étape 2 - Intelligence de filtrage
+    # daily_manager vérifie quelles vidéos n'ont pas encore été traitées
     new_videos = filter_new_videos(all_videos)
 
     if not new_videos:
         print("ℹ️ Aucune nouvelle vidéo à traiter")
         return None
 
-    # Étape 3: Grouper par date de publication
+    # TUTORIEL: Étape 3 - Organisation par date de publication
+    # Chaque vidéo sera traitée dans daily/sa-date-publication/
     videos_by_date = group_videos_by_date(new_videos)
     print(f"📅 Vidéos réparties sur {len(videos_by_date)} jour(s)")
 
     processed_syntheses = []
 
-    # Traiter chaque jour séparément avec VeilleCrew
+    # TUTORIEL: Traitement séparé par date - Pattern important
+    # Permet de créer des synthèses historiques cohérentes
     for pub_date, date_videos in sorted(videos_by_date.items(), reverse=True):
         print(f"\n📆 Traitement des vidéos du {pub_date} ({len(date_videos)} vidéos)")
 
-        # Créer et exécuter la synthèse pour cette date
+        # TUTORIEL: Délégation au système d'agents CrewAI
         synthesis_file = process_date_videos(topic, pub_date, date_videos)
-        
+
         if synthesis_file:
             processed_syntheses.append(synthesis_file)
 
-    print(f"\n🎉 Traitement terminé : {len(processed_syntheses)} synthèse(s) générée(s)")
+    print(
+        f"\n🎉 Traitement terminé : {len(processed_syntheses)} synthèse(s) générée(s)"
+    )
     return processed_syntheses
 
 
 def process_date_videos(topic, pub_date, date_videos):
-    """Traiter les vidéos d'une date spécifique avec VeilleCrew moderne"""
-    # Préparer le contexte vidéos pour les agents
+    """
+    TUTORIEL: Traitement par équipe d'agents CrewAI
+
+    Cette fonction montre comment utiliser la classe VeilleCrew
+    avec les decorators modernes pour traiter des données spécifiques.
+    """
+    # TUTORIEL: Préparation du contexte pour les agents IA
+    # Les agents ont besoin de connaître les vidéos à analyser
     videos_context = f"\n\nVIDÉOS YOUTUBE DU {pub_date} :\n"
     for i, video in enumerate(date_videos, 1):
         videos_context += f"{i}. **{video['title']}** ({video['channel']})\n"
@@ -81,17 +116,22 @@ def process_date_videos(topic, pub_date, date_videos):
 
     try:
         print(f"⚡ Lancement VeilleCrew pour {pub_date}...")
-        
-        # Créer et lancer le crew moderne avec decorators
+
+        # TUTORIEL: Instanciation et lancement de l'équipe d'agents
+        # VeilleCrew.create_for_topic() utilise le pattern Factory
         crew_instance = VeilleCrew.create_for_topic(topic, videos_context, pub_date)
+
+        # TUTORIEL: kickoff_for_topic() démarre l'exécution séquentielle
+        # 1. Agent researcher → cherche articles avec Serper
+        # 2. Agent synthesizer → crée synthèse avec articles + vidéos
         result = crew_instance.kickoff_for_topic(topic, videos_context, pub_date)
 
-        # Sauvegarder via daily_manager
-        synthesis_file = save_synthesis_by_date(str(result), topic['name'], pub_date)
-        
-        # Marquer les vidéos comme traitées
+        # TUTORIEL: Persistence du résultat dans l'organisation daily/
+        synthesis_file = save_synthesis_by_date(str(result), topic["name"], pub_date)
+
+        # TUTORIEL: Marquage anti-doublons pour éviter retraitement
         mark_videos_as_processed(date_videos)
-        
+
         return synthesis_file
 
     except Exception as e:
@@ -99,10 +139,17 @@ def process_date_videos(topic, pub_date, date_videos):
         return None
 
 
-
-
 def main():
-    parser = argparse.ArgumentParser(description="Veille CrewAI Simple")
+    """
+    TUTORIEL: Interface CLI pour le système de veille
+
+    Cette fonction montre comment créer une interface utilisateur
+    pour un système CrewAI avec différents modes de fonctionnement.
+    """
+    # TUTORIEL: Configuration CLI avec argparse
+    parser = argparse.ArgumentParser(
+        description="Veille CrewAI Simple - Tutoriel complet"
+    )
     parser.add_argument(
         "--config", default="config/topics.yaml", help="Fichier de configuration topics"
     )
@@ -179,9 +226,12 @@ def main():
 
     print("🎭 Utilisation VeilleCrew avec decorators @agent/@task/@crew")
 
-    # Traiter chaque topic avec la classe moderne
+    # TUTORIEL: Traitement de chaque topic avec CrewAI
+    # Chaque topic génère potentiellement plusieurs synthèses (une par date de publication)
     results = []
     for topic in topics_to_process:
+        # TUTORIEL: run_veille_for_topic() orchestrera les agents IA
+        # pour ce topic spécifique en utilisant VeilleCrew
         filename = run_veille_for_topic(topic)
         if filename:
             results.append(filename)

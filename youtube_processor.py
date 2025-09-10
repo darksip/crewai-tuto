@@ -1,6 +1,7 @@
 """
 Module de traitement YouTube - RSS feeds et résolution Channel IDs
 """
+
 import subprocess
 import feedparser
 from datetime import datetime, timedelta
@@ -121,13 +122,13 @@ def get_video_id_from_url(video_url):
 def collect_videos_for_topic(topic, verbose=True):
     """Collecter toutes les vidéos YouTube pour un topic via RSS"""
     all_videos = []
-    
+
     if verbose:
         print(f"📡 Récupération RSS pour {topic['name']} (7 derniers jours)...")
 
     for channel_url in topic["youtube_channels"]:
         channel_name = extract_channel_name(channel_url)
-        
+
         if verbose:
             print(f"  📺 Analyse de {channel_name}...")
 
@@ -136,12 +137,12 @@ def collect_videos_for_topic(topic, verbose=True):
         if videos:
             if verbose:
                 print(f"    📊 {len(videos)} vidéo(s) trouvée(s) sur 7 jours")
-            
+
             # Ajouter les métadonnées pour le traitement
             for video in videos:
                 video["video_id"] = get_video_id_from_url(video["url"])
                 video["channel_name"] = channel_name
-            
+
             all_videos.extend(videos)
         else:
             if verbose:
