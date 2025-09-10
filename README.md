@@ -2,15 +2,24 @@
 
 Système de veille automatisée **ultra-simple** avec CrewAI. Configuration 100% déclarative via YAML + gestion des secrets avec Doppler.
 
-## 📁 Structure (4 fichiers seulement !)
+## 📁 Structure modulaire
 
 ```
 crewai-veille-simple/
-├── veille.yaml      # ⚙️  Configuration complète 
-├── main.py          # 🚀 Script principal (200 lignes)
-├── pyproject.toml   # 📦 Dépendances minimales (3 packages)
-└── README.md        # 📖 Documentation
+├── veille.yaml         # ⚙️  Configuration complète 
+├── main.py             # 🚀 Orchestration CrewAI (289 lignes)
+├── youtube_processor.py # 📺 Logique YouTube RSS (171 lignes)  
+├── daily_manager.py    # 🗂️  Persistence quotidienne (200 lignes)
+├── pyproject.toml      # 📦 Dépendances minimales (5 packages)
+├── README.md           # 📖 Documentation
+└── daily/              # 📊 Données générées (ignoré par git)
+    └── YYYY-MM-DD/     # Organisation par date de publication
 ```
+
+### 🧩 Séparation des responsabilités
+- **main.py** → Mécanique CrewAI pure (agents, tâches, crews)
+- **youtube_processor.py** → YouTube RSS, Channel ID, collecte vidéos
+- **daily_manager.py** → Persistence, organisation par dates, évitement doublons
 
 ## 🚀 Installation
 
@@ -20,7 +29,7 @@ uv sync
 
 # Configurer Doppler (une seule fois)
 doppler setup
-doppler secrets set SERPER_API_KEY "votre-clé-serper"
+doppler secrets set SERP_API_KEY "votre-clé-serper"
 doppler secrets set OPENAI_API_KEY "votre-clé-openai"
 ```
 
@@ -72,6 +81,19 @@ topics:
 
 **Plus simple à configurer** : copiez l'URL depuis votre navigateur !
 
+## 🔄 Fonctionnement du système
+
+### 📡 Récupération intelligente
+1. **RSS feeds YouTube** → 15 dernières vidéos par chaîne (7 jours max)
+2. **Résolution automatique** → URLs → Channel IDs (curl/grep)
+3. **Recherche Serper** → Articles de presse récents
+
+### 🧠 Persistence par date de publication
+1. **Chaque vidéo** est traitée dans `daily/sa-date-publication/`
+2. **Évite les doublons** → `videos_processed.json` par date
+3. **Synthèses datées** → Une par topic par jour de publication
+4. **Exécutions multiples** → Seules les nouvelles vidéos sont traitées
+
 ## 📊 Résultats et Organisation
 
 ### 🗂️ Structure automatique par date de publication
@@ -101,10 +123,12 @@ daily/
 1. **Researcher** : Recherche d'actualités et vidéos YouTube
 2. **Synthesizer** : Rédaction des synthèses markdown
 
-## 🛠️ API Requises
+## 🛠️ API Requises (seulement 2 !)
 
-- **Serper API** : Recherche Google (https://serper.dev)
-- **OpenAI API** : LLM pour les agents (https://platform.openai.com)
+- **Serper API** : Recherche Google + YouTube via RSS (https://serper.dev)
+- **OpenAI API** : LLM pour les agents CrewAI (https://platform.openai.com)
+
+**🎉 Plus besoin de YouTube Data API !** RSS feeds natifs + résolution curl/grep
 
 ## 🔄 Automatisation
 
@@ -126,11 +150,13 @@ Pour automatiser l'exécution quotidienne, ajoutez à votre crontab :
 
 | Aspect | Version Complexe | Version Simple |
 |--------|------------------|----------------|
-| Lignes de code | 3700 | 200 |
+| Lignes de code | 3700 | 580 |
 | Fichiers Python | 18 | 1 |
-| Packages | 84 | 3 |
-| Configuration | Code Python | YAML déclaratif |
+| Packages | 84 | 5 |
+| Configuration | Code Python dispersé | YAML déclaratif |
 | Gestion secrets | Variables d'env | Doppler intégré |
+| YouTube | API + outils complexes | RSS feeds natifs |
+| Persistence | Système complexe | daily/ par date publication |
 | Maintenance | Très difficile | Ultra facile |
 
-**Résultat** : Même fonctionnalité, **18x moins de complexité** ! 🎉
+**Résultat** : **6x moins de complexité** avec persistence intelligente ! 🎉
