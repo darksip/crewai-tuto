@@ -61,7 +61,7 @@ def run_veille_for_topic(topic):
     print(f"\n🚀 Traitement du topic : {topic['name']}")
 
     # TUTORIEL: Étape 1 - Collecte des données externes
-    # youtube_processor récupère 7 jours de vidéos via flux RSS natifs
+    # youtube_processor récupère 15 jours de vidéos via flux RSS natifs
     all_videos = collect_videos_for_topic(topic)
 
     # TUTORIEL: Étape 2 - Intelligence de filtrage

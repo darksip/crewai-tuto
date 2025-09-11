@@ -6,7 +6,8 @@ Il montre comment structurer une équipe d'agents IA pour l'analyse d'actualité
 """
 
 # Imports CrewAI - Framework d'orchestration d'agents IA
-from crewai import Agent, Crew, Task, Process
+from crewai import Agent, Crew, Task, Process, LLM
+import os
 
 # Decorators modernes CrewAI 2025 - permettent l'auto-découverte des composants
 from crewai.project import CrewBase, agent, task, crew, tool
@@ -90,6 +91,29 @@ class VeilleCrew:
             "videos_context": self.videos_context,  # Contexte vidéos pré-récupéré
         }
 
+    # TUTORIEL: Factory LLM simple - Switch entre OpenRouter et OpenAI
+    def _create_llm_for_agent(self, model_name):
+        """
+        TUTORIEL: Factory pour créer un LLM selon le provider configuré
+        
+        Cette fonction montre comment switcher entre providers LLM.
+        OpenRouter par défaut (modèles gratuits), OpenAI en option.
+        """
+        # TUTORIEL: Récupération du provider depuis variable d'environnement
+        provider = os.getenv("LLM_PROVIDER", "openrouter")  # OpenRouter par défaut
+        
+        if provider == "openai":
+            # TUTORIEL: Mode OpenAI - utiliser le LLM par défaut CrewAI
+            return None  # CrewAI utilisera automatiquement OpenAI
+        else:
+            # TUTORIEL: Mode OpenRouter - modèles gratuits et variés
+            # Format: "openrouter/provider/model-name:free"
+            return LLM(
+                model=f"openrouter/{model_name}",
+                base_url="https://openrouter.ai/api/v1",
+                api_key=os.getenv("OPENROUTER_API_KEY")
+            )
+
     # TUTORIEL: @tool decorator - Définit un outil utilisable par les agents
     # Les agents peuvent utiliser ces outils pour effectuer des actions concrètes
     @tool
@@ -145,11 +169,17 @@ class VeilleCrew:
         Cet agent est spécialisé dans la recherche d'actualités.
         Il utilise l'outil Serper pour trouver des articles récents.
         Sa configuration (role, goal, backstory) vient de agents.yaml.
+        SON MODÈLE LLM est configurable via agents.yaml (OpenRouter par défaut).
         """
+        # TUTORIEL: Récupération du modèle LLM depuis la config YAML
+        model_name = self.agents_config["researcher"].get("llm_model")
+        llm = self._create_llm_for_agent(model_name) if model_name else None
+        
         return Agent(
             config=self.agents_config["researcher"],  # Configuration depuis agents.yaml
-            tools=[self.serper_search()],  # Outils disponibles pour cet agent
-            verbose=True,  # Affichage des détails d'exécution
+            llm=llm,                                  # LLM spécifique (OpenRouter ou OpenAI)
+            tools=[self.serper_search()],             # Outils disponibles pour cet agent
+            verbose=True,                             # Affichage des détails d'exécution
         )
 
     # TUTORIEL: Deuxième agent avec un rôle différent
@@ -161,12 +191,16 @@ class VeilleCrew:
         Cet agent se spécialise dans la rédaction de synthèses.
         Il n'a pas besoin d'outils de recherche, il travaille sur les données
         collectées par l'agent researcher.
+        SON MODÈLE LLM peut être différent (ex: spécialisé en rédaction).
         """
+        # TUTORIEL: Même pattern - récupération du modèle depuis YAML
+        model_name = self.agents_config["synthesizer"].get("llm_model")
+        llm = self._create_llm_for_agent(model_name) if model_name else None
+        
         return Agent(
-            config=self.agents_config[
-                "synthesizer"
-            ],  # Configuration depuis agents.yaml
-            verbose=True,  # Pas d'outils - utilise les résultats du researcher
+            config=self.agents_config["synthesizer"],  # Configuration depuis agents.yaml
+            llm=llm,                                   # LLM spécifique pour synthèse
+            verbose=True,                              # Pas d'outils - utilise les résultats du researcher
         )
 
     # TUTORIEL: @task decorator - Définit une tâche à accomplir

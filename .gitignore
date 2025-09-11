@@ -17,3 +17,6 @@ logs/
 
 # Daily processing data
 daily/
+
+# YouTube channel IDs cache
+channel_ids_cache.json

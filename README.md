@@ -69,7 +69,11 @@ uv sync
 # Configurer Doppler (une seule fois)
 doppler setup
 doppler secrets set SERP_API_KEY "votre-clé-serper"
-doppler secrets set OPENAI_API_KEY "votre-clé-openai"
+doppler secrets set OPENROUTER_API_KEY "votre-clé-openrouter"  # OpenRouter par défaut (modèles gratuits !)
+
+# Optionnel : forcer OpenAI au lieu d'OpenRouter
+# doppler secrets set LLM_PROVIDER "openai"
+# doppler secrets set OPENAI_API_KEY "votre-clé-openai"
 ```
 
 ## 🎯 Utilisation avec Doppler
@@ -109,18 +113,22 @@ topics:
     volume: 8
 ```
 
-### 🤖 config/agents.yaml - Agents CrewAI
+### 🤖 config/agents.yaml - Agents CrewAI avec modèles LLM
 ```yaml
 researcher:
   role: "Chercheur Web Senior"
   goal: "Trouver les actualités les plus récentes"
   backstory: "Expert en recherche d'information..."
+  llm_model: "google/gemini-2.5-flash"  # 🚀 Modèle Google performant par défaut
 
 synthesizer:
   role: "Rédacteur de Synthèses"  
   goal: "Créer des synthèses claires"
   backstory: "Journaliste tech expérimenté..."
+  llm_model: "google/gemini-2.5-flash"  # 🚀 Même modèle pour cohérence
 ```
+
+💡 **Modèles gratuits OpenRouter** : Qwen, Llama, DeepSeek, Gemini - Format `provider/model:free`
 
 ### 📋 config/tasks.yaml - Tâches CrewAI
 ```yaml
@@ -140,8 +148,8 @@ synthesize:
 ## 🔄 Fonctionnement du système
 
 ### 📡 Récupération intelligente
-1. **RSS feeds YouTube** → 15 dernières vidéos par chaîne (7 jours max)
-2. **Résolution automatique** → URLs → Channel IDs (curl/grep)
+1. **RSS feeds YouTube** → 15 dernières vidéos par chaîne (15 jours max)
+2. **Résolution automatique** → URLs → Channel IDs (curl/grep + cache)
 3. **Recherche Serper** → Articles de presse récents
 
 ### 🧠 Persistence par date de publication
@@ -198,7 +206,8 @@ daily/
 
 ### 📹 Système de persistence intelligent
 
-- **Récupération 7 jours** de vidéos RSS par chaîne
+- **Récupération 15 jours** de vidéos RSS par chaîne
+- **Cache Channel IDs** : résolution une seule fois puis persisté
 - **Traitement par date de publication** (pas d'exécution)
 - **Évite les doublons** : chaque vidéo traitée une seule fois
 - **Synthèses datées** : une par topic par jour de publication
@@ -211,7 +220,17 @@ daily/
 ## 🛠️ API Requises (seulement 2 !)
 
 - **Serper API** : Recherche Google + YouTube via RSS (https://serper.dev)
-- **OpenAI API** : LLM pour les agents CrewAI (https://platform.openai.com)
+- **OpenRouter API** : LLM pour les agents CrewAI - **MODÈLES GRATUITS !** (https://openrouter.ai)
+
+### 🔄 Switch LLM Provider (optionnel)
+```bash
+# Par défaut : OpenRouter (gratuit)
+doppler secrets set OPENROUTER_API_KEY "your-key"
+
+# Alternative : OpenAI (payant)
+doppler secrets set LLM_PROVIDER "openai"
+doppler secrets set OPENAI_API_KEY "your-key"
+```
 
 **🎉 Plus besoin de YouTube Data API !** RSS feeds natifs + résolution curl/grep
 
